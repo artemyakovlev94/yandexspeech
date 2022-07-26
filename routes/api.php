@@ -20,6 +20,7 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 });
 
 Route::prefix('speech')->group(function () {
+    Route::post('/upload', [SpeechController::class, 'uploadFile']);
     Route::post('/recognize', [SpeechController::class, 'recognize']);
 	Route::post('/synthesize', [SpeechController::class, 'synthesize']);
 });

@@ -7,6 +7,7 @@ use Panda\Yandex\SpeechKitSdk;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Traits\RespondsWithHttpStatus;
+use DateTime;
 
 class SpeechController extends Controller
 {
@@ -106,32 +107,32 @@ class SpeechController extends Controller
 
     public function uploadFile(Request $request)
     {
+        $path_files = '';
+
         $validator = Validator::make($request->all(), [
             'audio' => 'required|mimetypes:audio/ogg'
         ]);
 
         if ($validator->fails()) {
-            return response([
-                'success' => false,
-                'error' => 'Bad Request',
-                'errors' => $validator->messages(),
-            ], 400);
+            return $this->validateFailure($validator);
         }
 
         $file = $request->file('audio');
 
-        try {
-            $path = Storage::disk('local')->put('audio', $file);
-        } catch (\Throwable $th) {
-            return response([
-                'success' => false,
-                'error' => 'Internal Server Error',
-                'errors' => $th->getMessage(),
-            ], 500);
+        $save_files = config('yandexspeech.filesystem.save_files');
+
+        if ( $save_files ) {
+            
+            $path_files = config('yandexspeech.filesystem.path');
+
+            try {
+                $path = Storage::disk('local')->put($path_files, $file);
+            } catch (\Throwable $th) {
+                return $this->exceptionFailure($th);
+            }
         }
-        
-        return response([
-            'success' => true,
+
+        return $this->success('', [
             'path' => $path
         ]);
     }
@@ -182,7 +183,7 @@ class SpeechController extends Controller
         }
 
         if( !isset( $data['result'] ) ){
-            return $this->failure();
+            return $this->failure('Internal Server Error', $data, 500);
         }
 
         return $this->success($data['result'], $data);
@@ -197,6 +198,31 @@ class SpeechController extends Controller
         if ($validator->fails()) {
             return $this->validateFailure($validator);
         }
+
+        $token = config('yandexspeech.tokens.api');
+
+        $path_files = config('yandexspeech.filesystem.path');
+
+        $now = new \DateTime();
+
+        try {
+            // API Key
+            $cloud = SpeechKitSdk\Cloud::createApi($token);
+            // Текст, который нужно озвучить
+            $synthesize = new SpeechKitSdk\Synthesize($request->text);
+
+            Storage::put('file.jpg', $cloud->request($synthesize), 'local');
+
+        } catch (SpeechKitSdk\Exception\ClientException $e) {
+            return $this->exceptionFailure($e);
+        }
+
+        // $headers = array(
+        //     'Content-Type: audio/ogg',
+        // );
+
+        // return Storage::download($path_file, 'audio.ogg', $headers);
+
 
         return $this->success();
     }

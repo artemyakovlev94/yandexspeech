@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SpeechController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,4 +17,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
+});
+
+Route::prefix('speech')->group(function () {
+    Route::post('/recognize', [SpeechController::class, 'recognize']);
+	Route::post('/synthesize', [SpeechController::class, 'synthesize']);
 });
